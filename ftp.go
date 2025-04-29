@@ -79,6 +79,7 @@ type dialOptions struct {
 	disableEPSV     bool
 	disableUTF8     bool
 	disableMLSD     bool
+	disableFEAT     bool
 	writingMDTM     bool
 	forceListHidden bool
 	location        *time.Location
@@ -236,6 +237,12 @@ func DialWithDisabledMLSD(disabled bool) DialOption {
 	}}
 }
 
+func DialWithDisabledFEAT(disabled bool) DialOption {
+	return DialOption{func(do *dialOptions) {
+		do.disableFEAT = disabled
+	}}
+}
+
 // DialWithWritingMDTM returns a DialOption making ServerConn use MDTM to set file time
 //
 // This option addresses a quirk in the VsFtpd server which doesn't support
@@ -365,19 +372,21 @@ func (c *ServerConn) Login(user, password string) error {
 		return errors.New(message)
 	}
 
-	// Probe features
-	err = c.feat()
-	if err != nil {
-		return err
-	}
-	if _, mlstSupported := c.features["MLST"]; mlstSupported && !c.options.disableMLSD {
-		c.mlstSupported = true
-	}
-	_, c.usePRET = c.features["PRET"]
+	if c.options.disableFEAT {
+		// Probe features
+		err = c.feat()
+		if err != nil {
+			return err
+		}
+		if _, mlstSupported := c.features["MLST"]; mlstSupported && !c.options.disableMLSD {
+			c.mlstSupported = true
+		}
+		_, c.usePRET = c.features["PRET"]
 
-	_, c.mfmtSupported = c.features["MFMT"]
-	_, c.mdtmSupported = c.features["MDTM"]
-	c.mdtmCanWrite = c.mdtmSupported && c.options.writingMDTM
+		_, c.mfmtSupported = c.features["MFMT"]
+		_, c.mdtmSupported = c.features["MDTM"]
+		c.mdtmCanWrite = c.mdtmSupported && c.options.writingMDTM
+	}
 
 	// Switch to binary mode
 	if err = c.Type(TransferTypeBinary); err != nil {
