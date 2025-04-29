@@ -372,7 +372,7 @@ func (c *ServerConn) Login(user, password string) error {
 		return errors.New(message)
 	}
 
-	if c.options.disableFEAT {
+	if !c.options.disableFEAT {
 		// Probe features
 		err = c.feat()
 		if err != nil {
